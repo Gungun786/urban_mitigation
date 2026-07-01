@@ -291,6 +291,7 @@ body {
 .forecast-map-wrapper,
 .small-map-card .map-container-wrapper {
   min-height: 300px;
+  height: 320px;
 }
 
 /* Leaflet Overrides */

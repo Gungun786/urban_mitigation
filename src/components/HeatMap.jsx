@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { MapContainer, TileLayer, Polygon, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, useMap, CircleMarker } from 'react-leaflet';
+import { BIKANER_HEAT_POINTS } from '../data/bikanerHeatmapPoints';
 
 // Helper component to center/fly map when selected ward changes
 function MapController({ selectedWard, wards }) {
@@ -130,11 +131,12 @@ export default function HeatMap({
   };
 
   return (
-    <div className="map-container-wrapper">
+    <div className="map-container-wrapper" style={{ minHeight: '300px', height: '300px' }}>
       <MapContainer 
         center={delhiCenter} 
         zoom={11} 
         zoomControl={true}
+        style={{ width: '100%', height: '100%' }}
         maxZoom={15}
         minZoom={5}
         maxBounds={indiaBounds}
@@ -166,6 +168,21 @@ export default function HeatMap({
             pathOptions={getWardStyle(ward)}
           />
         ))}
+
+        {/* Render Bikaner street-level heat points if available */}
+        {Array.isArray(BIKANER_HEAT_POINTS) && BIKANER_HEAT_POINTS.length > 0 && (
+          BIKANER_HEAT_POINTS.map((pt, idx) => (
+            <CircleMarker
+              key={`bpt-${idx}`}
+              center={[pt.lat, pt.lng]}
+              radius={4}
+              pathOptions={{
+                color: pt.temp >= 45 ? 'var(--color-heat)' : pt.temp >= 39 ? 'var(--color-warm)' : 'var(--color-cool)',
+                fillOpacity: 0.9,
+              }}
+            />
+          ))
+        )}
 
         <MapController selectedWard={selectedWardId} wards={wards} />
       </MapContainer>
