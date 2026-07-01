@@ -491,12 +491,7 @@ export default function App() {
           </div>
 
           {/* Interactive Geospatial Leaflet Map */}
-          <HeatMap 
-            wards={wards} 
-            selectedWardId={selectedWardId} 
-            onSelectWard={setSelectedWardId} 
-            activeLayer={activeLayer} 
-          />
+          <HeatMap />
 
         </section>
 
