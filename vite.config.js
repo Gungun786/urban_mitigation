@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:5310',
+        target: 'https://urban-mitigation.onrender.com',
         changeOrigin: true,
         secure: false,
       },
