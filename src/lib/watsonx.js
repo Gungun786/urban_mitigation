@@ -22,9 +22,10 @@ Recommendations:
 - Recommendation one
 - Recommendation two
 `;
-  const payload = { messages: [{ role: 'user', content }] };
+    const payload = { messages: [{ role: 'user', content }] };
 
-  const resp = await fetch('/api/ai-heat-score', {
+  const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+  const resp = await fetch(`${apiBase}/api/ai-heat-score`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
