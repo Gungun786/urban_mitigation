@@ -1,3 +1,4 @@
+import WhatIfSimulator from "./components/WhatIfSimulator";
 import React, { useState, useMemo } from 'react';
 import {
   Flame,
@@ -320,6 +321,12 @@ export default function App() {
         >
           AI Heat Score
         </button>
+        <button
+  className={`page-tab ${activePage === 'whatif' ? 'active' : ''}`}
+  onClick={() => setActivePage('whatif')}
+>
+  What-If Simulator
+</button>
       </nav>
 
       {activePage === 'dashboard' ? (
@@ -630,23 +637,34 @@ export default function App() {
           onSelectWard={setSelectedWardId}
           activeLayer={activeLayer}
         />
-      ) : activePage === 'forecast' ? (
-        <ForecastPage
-          wards={wards}
-          selectedWardId={selectedWardId}
-          selectedWard={selectedWard}
-          onSelectWard={setSelectedWardId}
-          activeLayer={activeLayer}
-        />
-      ) : (
-        <AIScoringPage
-          wards={wards}
-          selectedWardId={selectedWardId}
-          selectedWard={selectedWard}
-          onSelectWard={setSelectedWardId}
-          activeLayer={activeLayer}
-        />
-      )}
+      ) : activePage === 'feature' ? (
+  <FeatureDashboard
+    wards={wards}
+    selectedWardId={selectedWardId}
+    selectedWard={selectedWard}
+    cityStats={cityStats}
+    onSelectWard={setSelectedWardId}
+    activeLayer={activeLayer}
+  />
+) : activePage === 'forecast' ? (
+  <ForecastPage
+    wards={wards}
+    selectedWardId={selectedWardId}
+    selectedWard={selectedWard}
+    onSelectWard={setSelectedWardId}
+    activeLayer={activeLayer}
+  />
+) : activePage === 'whatif' ? (
+  <WhatIfSimulator />
+) : (
+  <AIScoringPage
+    wards={wards}
+    selectedWardId={selectedWardId}
+    selectedWard={selectedWard}
+    onSelectWard={setSelectedWardId}
+    activeLayer={activeLayer}
+  />
+)}
 
       {/* Footer bar featuring Landsat & IoT live-updating feed */}
       <DataSources />
