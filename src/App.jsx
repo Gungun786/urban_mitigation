@@ -1,3 +1,4 @@
+import WhatIfSimulator from "./components/WhatIfSimulator";
 import React, { useState, useMemo } from 'react';
 import { 
   Flame, 
@@ -321,7 +322,20 @@ export default function App() {
         >
           AI Heat Score
         </button>
+        <button
+          className={`page-tab ${
+            activePage === 'whatif'
+              ? 'active'
+              : ''
+          }`}
+          onClick={() =>
+            setActivePage('whatif')
+          }
+        >
+          What If
+        </button>
       </nav>
+
 
       {activePage === 'dashboard' ? (
         <main className="dashboard-grid">
@@ -521,27 +535,48 @@ export default function App() {
         </section>
 
       </main>
-      ) : activePage === 'forecast' ? (
-        <ForecastPage
-          wards={wards}
-          selectedWardId={selectedWardId}
-          selectedWard={selectedWard}
-          onSelectWard={setSelectedWardId}
-          activeLayer={activeLayer}
-        />
-      ) : (
-        <AIScoringPage
-          wards={wards}
-          selectedWardId={selectedWardId}
-          selectedWard={selectedWard}
-          onSelectWard={setSelectedWardId}
-          activeLayer={activeLayer}
-        />
-      )}
+       ) : activePage === 'forecast' ? (
 
+    <ForecastPage
+      wards={wards}
+      selectedWardId={selectedWardId}
+      selectedWard={selectedWard}
+      onSelectWard={setSelectedWardId}
+      activeLayer={activeLayer}
+    />
+
+) : activePage === 'forecast' ? (
+
+    <ForecastPage
+      wards={wards}
+      selectedWardId={selectedWardId}
+      selectedWard={selectedWard}
+      onSelectWard={setSelectedWardId}
+      activeLayer={activeLayer}
+    />
+
+) : activePage === 'ai' ? (
+
+    <AIScoringPage
+      wards={wards}
+      selectedWardId={selectedWardId}
+      selectedWard={selectedWard}
+      onSelectWard={setSelectedWardId}
+      activeLayer={activeLayer}
+    />
+
+) : activePage === 'whatif' ? (
+
+    <WhatIfSimulator />
+
+) : null}
       {/* Footer bar featuring Landsat & IoT live-updating feed */}
       <DataSources />
 
     </div>
   );
 }
+
+
+
+
