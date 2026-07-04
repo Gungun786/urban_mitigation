@@ -3,21 +3,36 @@ import { TrendingDown, Activity, Info } from 'lucide-react';
 
 export default function PredictionChart({ selectedWard, cityStats }) {
   const stats = selectedWard || cityStats;
-  const tempDiff = stats.baseTemp - stats.currentTemp; // Cooling amount (e.g. 0 to 6)
-  
-  // Base points for a 300x100 SVG viewport
-  // We shift the Y-axis coordinates downward (adding to Y) as temperature decreases (cooling)
-  // Remember: in SVG, higher Y value means lower on screen (cooler temperature)
-  const shiftY = tempDiff * 6.5; // Scale the shift factor
+  const stateName = selectedWard?.state || 'Delhi';
+  const year = new Date().getFullYear();
+  const series = stats.predictionSeries || [
+    { label: 'Now', temp: stats.currentTemp },
+    { label: '+3h', temp: stats.currentTemp - 0.8 },
+    { label: '+6h', temp: stats.currentTemp - 1.5 },
+    { label: '+12h', temp: stats.currentTemp - 2.2 },
+  ];
 
-  // Baseline coordinates (crimson red curve representing standard heat trend)
-  const baselinePath = "M 10,75 C 60,70 110,25 150,20 C 190,15 240,45 290,65";
-  const baselineArea = "M 10,75 C 60,70 110,25 150,20 C 190,15 240,45 290,65 L 290,95 L 10,95 Z";
+  const maxTemp = Math.max(...series.map(point => point.temp), stats.baseTemp + 1);
+  const minTemp = Math.min(...series.map(point => point.temp), stats.baseTemp - 2);
+  const range = Math.max(1, maxTemp - minTemp);
+  const chartWidth = 280;
+  const chartHeight = 90;
+  const paddingX = 24;
+  const paddingY = 14;
 
-  // Simulated coordinates (green curve responding to slider inputs)
-  // We modify the control points dynamically based on the shiftY cooling factor
-  const simPath = `M 10,${75 + shiftY * 0.4} C 60,${70 + shiftY * 0.7} 110,${25 + shiftY} 150,${20 + shiftY} C 190,${15 + shiftY} 240,${45 + shiftY * 0.8} 290,${65 + shiftY * 0.5}`;
-  const simArea = `M 10,${75 + shiftY * 0.4} C 60,${70 + shiftY * 0.7} 110,${25 + shiftY} 150,${20 + shiftY} C 190,${15 + shiftY} 240,${45 + shiftY * 0.8} 290,${65 + shiftY * 0.5} L 290,95 L 10,95 Z`;
+  const getPointCoordinates = (index, temp) => {
+    const x = paddingX + (index * (chartWidth - paddingX * 2)) / Math.max(1, series.length - 1);
+    const y = paddingY + ((maxTemp - temp) / range) * (chartHeight - paddingY * 2);
+    return { x, y };
+  };
+
+  const points = series.map((point, index) => {
+    const { x, y } = getPointCoordinates(index, point.temp);
+    return { ...point, x, y };
+  });
+
+  const polyline = points.map(point => `${point.x},${point.y}`).join(' ');
+  const areaPath = `M ${points[0].x},${chartHeight - paddingY} L ${points.map(point => `${point.x},${point.y}`).join(' L ')} L ${points[points.length - 1].x},${chartHeight - paddingY} Z`;
 
   return (
     <div className="panel-card">
@@ -32,74 +47,71 @@ export default function PredictionChart({ selectedWard, cityStats }) {
         </span>
       </div>
 
+      <div style={{ marginBottom: '0.45rem', fontSize: '0.72rem', color: 'var(--color-cool)', fontWeight: 600 }}>
+        {stateName} • {year}
+      </div>
+
       <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
         Daily heat trend for this neighborhood, showing current ward conditions and the effect of your chosen strategy.
       </p>
 
       {/* SVG Chart */}
       <div className="svg-chart-container">
-        <svg viewBox="0 0 300 100" width="100%" height="100%">
+        <svg viewBox={`0 0 ${chartWidth + paddingX * 2} ${chartHeight + paddingY * 2}`} width="100%" height="100%">
           <defs>
-            {/* Gradient for Baseline Area Fill */}
             <linearGradient id="baseline-gradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--color-heat)" stopOpacity="0.15" />
+              <stop offset="0%" stopColor="var(--color-heat)" stopOpacity="0.18" />
               <stop offset="100%" stopColor="var(--color-heat)" stopOpacity="0" />
             </linearGradient>
-            
-            {/* Gradient for Simulated Area Fill */}
+
             <linearGradient id="simulated-gradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--color-cool)" stopOpacity="0.15" />
+              <stop offset="0%" stopColor="var(--color-cool)" stopOpacity="0.2" />
               <stop offset="100%" stopColor="var(--color-cool)" stopOpacity="0" />
             </linearGradient>
           </defs>
 
-          {/* Grid lines */}
-          <line x1="10" y1="20" x2="290" y2="20" className="chart-grid-line" />
-          <line x1="10" y1="45" x2="290" y2="45" className="chart-grid-line" />
-          <line x1="10" y1="70" x2="290" y2="70" className="chart-grid-line" />
-          
-          {/* Axis lines */}
-          <line x1="10" y1="95" x2="290" y2="95" className="chart-axis-line" />
-          <line x1="10" y1="10" x2="10" y2="95" className="chart-axis-line" />
+          <line x1={paddingX} y1={paddingY} x2={paddingX} y2={chartHeight + paddingY} className="chart-axis-line" />
+          <line x1={paddingX} y1={chartHeight + paddingY} x2={chartWidth + paddingX} y2={chartHeight + paddingY} className="chart-axis-line" />
+          <line x1={paddingX} y1={paddingY + 20} x2={chartWidth + paddingX} y2={paddingY + 20} className="chart-grid-line" />
+          <line x1={paddingX} y1={paddingY + 45} x2={chartWidth + paddingX} y2={paddingY + 45} className="chart-grid-line" />
+          <line x1={paddingX} y1={paddingY + 70} x2={chartWidth + paddingX} y2={paddingY + 70} className="chart-grid-line" />
 
-          {/* Area under curves */}
-          <path d={baselineArea} className="chart-area-baseline" />
-          {tempDiff > 0 && <path d={simArea} className="chart-area-simulated" />}
+          <path d={areaPath} className="chart-area-simulated" />
+          <path d={`M ${paddingX},${chartHeight + paddingY} L ${paddingX},${chartHeight + paddingY}`} className="chart-area-baseline" />
 
-          {/* Line paths */}
-          <path d={baselinePath} className="chart-line-baseline" />
-          <path d={simPath} className="chart-line-simulated" />
+          <polyline points={polyline} className="chart-line-simulated" fill="none" />
+          <line x1={paddingX} y1={chartHeight + paddingY} x2={chartWidth + paddingX} y2={chartHeight + paddingY} className="chart-line-baseline" />
 
-          {/* Peaks Indicators */}
-          <circle cx="150" cy="20" r="3" fill="var(--color-heat)" />
-          {tempDiff > 0 && (
-            <circle cx="150" cy={20 + shiftY} r="3" fill="var(--color-cool)" />
-          )}
+          {points.map(point => (
+            <g key={point.label}>
+              <circle cx={point.x} cy={point.y} r="4" fill="var(--color-cool)" />
+              <circle cx={point.x} cy={point.y} r="7" fill="none" stroke="var(--color-cool)" strokeOpacity="0.24" />
+              <rect x={point.x - 16} y={point.y - 16} width="32" height="12" rx="6" fill="rgba(5, 19, 31, 0.75)" />
+              <text x={point.x} y={point.y - 8} textAnchor="middle" fontSize="7" fill="var(--color-cool)">
+                {point.temp.toFixed(1)}°C
+              </text>
+            </g>
+          ))}
         </svg>
       </div>
 
-      {/* X Axis Labels */}
       <div className="chart-labels">
-        <span>08:00 AM</span>
-        <span>12:00 PM</span>
-        <span>02:00 PM (Peak)</span>
-        <span>04:00 PM</span>
-        <span>08:00 PM</span>
+        {points.map(point => (
+          <span key={point.label}>{point.label}</span>
+        ))}
       </div>
 
-      {/* Chart Legend */}
       <div style={{ display: 'flex', gap: '1rem', marginTop: '0.75rem', fontSize: '0.7rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
           <span style={{ width: '10px', height: '3px', background: 'var(--color-heat)', borderRadius: '1.5px' }}></span>
-          <span style={{ color: 'var(--text-secondary)' }}>Baseline Trend</span>
+          <span style={{ color: 'var(--text-secondary)' }}>Baseline Heat</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
           <span style={{ width: '10px', height: '3px', borderTop: '2px dashed var(--color-cool)', verticalAlign: 'middle' }}></span>
-          <span style={{ color: 'var(--text-secondary)' }}>Simulated Strategy</span>
+          <span style={{ color: 'var(--text-secondary)' }}>Predicted Cooling</span>
         </div>
       </div>
 
-      {/* Accuracy Warning / Info */}
       <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.75rem', fontSize: '0.65rem', color: 'var(--text-muted)' }}>
         <Info size={12} style={{ flexShrink: 0, marginTop: '1px' }} />
         <span>Model confidence: R² = 0.89, RMSE = 0.64°C. Backed by historical Landsat 9 thermal infrared and local meteorological variables.</span>

@@ -7,6 +7,7 @@ import {
   Compass,
   AlertTriangle
 } from 'lucide-react';
+import { calculateHeatImpact } from './lib/heatModel';
 
 import HeatMap from './components/HeatMap';
 import StatsPanel from './components/StatsPanel';
@@ -14,6 +15,7 @@ import MitigationPlanner from './components/MitigationPlanner';
 import PredictionChart from './components/PredictionChart';
 import ForecastPage from './components/ForecastPage';
 import AIScoringPage from './components/AIScoringPage';
+import FeatureDashboard from './components/FeatureDashboard';
 import DataSources from './components/DataSources';
 
 // Mock dataset representing 5 distinct wards in New Delhi, India with realistic geospatial parameters
@@ -161,10 +163,12 @@ const INITIAL_WARDS = [
 ];
 
 export default function App() {
-  const [wards, setWards] = useState(INITIAL_WARDS);
+  const [wards, setWards] = useState(() =>
+    INITIAL_WARDS.map(ward => calculateHeatImpact(ward, 0, 0, 0))
+  );
   const [selectedWardId, setSelectedWardId] = useState(INITIAL_WARDS[0].id);
   const [activeLayer, setActiveLayer] = useState('temperature'); // temperature, vulnerability, priority
-  const [activePage, setActivePage] = useState('dashboard'); // dashboard, forecast, ai
+  const [activePage, setActivePage] = useState('dashboard'); // dashboard, forecast, ai, feature
 
   // Find the currently selected ward object
   const selectedWard = useMemo(() => {
@@ -208,39 +212,7 @@ export default function App() {
 
   // Recalculates metrics for a single ward based on delta parameters
   const recalculateWardMetrics = (ward, treeD, roofD, waterD) => {
-    // Math model:
-    // - Tree canopy planting (-0.16°C per 1% canopy added)
-    // - Cool roof installation (-0.045°C per 1% roof area converted)
-    // - Reflective pavement / water greenways (-0.09°C per 1% area converted)
-    const tempReduction = (treeD * 0.16) + (roofD * 0.045) + (waterD * 0.09);
-    const currentTemp = Math.max(30.0, ward.baseTemp - tempReduction);
-
-    // Canopy grows linearly with tree planting delta
-    const canopy = ward.baseCanopy + treeD;
-
-    // Albedo scales with roof painting (from base up to a max albedo value e.g. 0.6)
-    const albedo = ward.baseAlbedo + (roofD / 100) * 0.42;
-
-    // Vulnerability index drops as temperatures cool down (lowers heat stroke risks)
-    const vulnDrop = tempReduction * 2.8;
-    const vulnerability = Math.max(10, ward.baseVulnerability - vulnDrop);
-
-    // Energy savings and thermal comfort indices scale up
-    const energySavings = (treeD * 0.4) + (roofD * 0.2) + (waterD * 0.15);
-    const comfortLift = (treeD * 0.5) + (roofD * 0.25) + (waterD * 0.35);
-
-    return {
-      ...ward,
-      treeDelta: treeD,
-      roofDelta: roofD,
-      waterDelta: waterD,
-      currentTemp,
-      canopy,
-      albedo,
-      vulnerability,
-      energySavings,
-      comfortLift
-    };
+    return calculateHeatImpact(ward, treeD, roofD, waterD);
   };
 
   // Slider change handler
@@ -326,6 +298,13 @@ export default function App() {
           onClick={() => setActivePage('dashboard')}
         >
           Overview
+        </button>
+
+        <button
+          className={`page-tab ${activePage === 'feature' ? 'active' : ''}`}
+          onClick={() => setActivePage('feature')}
+        >
+          Predictive Dashboard
         </button>
 
         <button
@@ -642,6 +621,15 @@ export default function App() {
             />
           </section>
         </main>
+      ) : activePage === 'feature' ? (
+        <FeatureDashboard
+          wards={wards}
+          selectedWardId={selectedWardId}
+          selectedWard={selectedWard}
+          cityStats={cityStats}
+          onSelectWard={setSelectedWardId}
+          activeLayer={activeLayer}
+        />
       ) : activePage === 'forecast' ? (
         <ForecastPage
           wards={wards}

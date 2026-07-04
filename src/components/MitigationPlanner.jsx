@@ -152,11 +152,14 @@ export default function MitigationPlanner({
           <Sparkles size={11} />
           Recommended Strategy:
         </div>
-        <p style={{ color: 'var(--text-secondary)' }}>
-          {selectedWard.priority === 'High' 
-            ? 'Start with cool roofs in the hottest corridors, then add shade trees and waterside greenways where people gather most.' 
-            : 'Build on existing green cover with targeted shade planting and reflective surfaces to keep community spaces comfortable.'}
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '0.45rem' }}>
+          {selectedWard.recommendationSummary || 'Balanced strategy for neighborhood cooling.'}
         </p>
+        <ul style={{ margin: 0, paddingLeft: '1rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+          {(selectedWard.recommendedActions || []).map(action => (
+            <li key={action}>{action}</li>
+          ))}
+        </ul>
       </div>
     </div>
   );
