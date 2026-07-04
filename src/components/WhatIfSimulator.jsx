@@ -74,8 +74,8 @@ export default function WhatIfSimulator() {
       style={{
         padding: "30px",
         background: "#f5f7fb",
-        minHeight: "100vh",
         fontFamily: "Arial",
+         overflowX: "hidden",
       }}
     >
       <h1>🌍 HeatShield AI</h1>

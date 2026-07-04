@@ -40,7 +40,7 @@ export default function MitigationSimulator() {
       style={{
         padding: "30px",
         background: "#f6f9f6",
-        minHeight: "100vh",
+        
         fontFamily: "sans-serif",
       }}
     >

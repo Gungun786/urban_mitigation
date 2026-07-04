@@ -1,178 +1,326 @@
-import React, { useEffect } from 'react';
-import { MapContainer, TileLayer, Polygon, useMap } from 'react-leaflet';
+import React, { useEffect, useRef, useState } from "react";
+import {
+  MapContainer,
+  TileLayer,
+  useMap,
+  Marker,
+  Popup,
+} from "react-leaflet";
 
-// Helper component to center/fly map when selected ward changes
-function MapController({ selectedWard, wards }) {
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import "leaflet.heat";
+import Papa from "papaparse";
+
+function HeatLayer({ cities }) {
   const map = useMap();
+  const heatLayer = useRef(null);
+
+  function generateCluster(lat, lon, spread, count, intensity) {
+    const points = [];
+
+    for (let i = 0; i < count; i++) {
+      points.push([
+        lat + (Math.random() - 0.5) * spread,
+        lon + (Math.random() - 0.5) * spread,
+        intensity,
+      ]);
+    }
+
+    return points;
+  }
 
   useEffect(() => {
-    if (selectedWard) {
-      const ward = wards.find(w => w.id === selectedWard);
-      if (ward && ward.center) {
-        map.flyTo(ward.center, 12.5, {
-          duration: 1.2,
-          easeLinearity: 0.25
-        });
-      }
-    }
-  }, [selectedWard, wards, map]);
+    Papa.parse("/heatmap_data.csv", {
+      download: true,
+      header: true,
+
+      complete: (results) => {
+        let heatPoints = [];
+
+        // existing satellite points
+        const satellite = results.data
+          .filter(
+            (row) =>
+              row.Latitude &&
+              row.Longitude &&
+              row.LST_Day_1km
+          )
+          .map((row) => [
+            parseFloat(row.Latitude),
+            parseFloat(row.Longitude),
+            parseFloat(row.LST_Day_1km) / 50,
+          ]);
+
+        heatPoints.push(...satellite);
+
+        // Rajasthan
+        heatPoints.push(
+          ...generateCluster(26.9, 75.8, 2.2, 100, 1.0),
+          ...generateCluster(26.2, 73.0, 2.0, 100, 1.0),
+          ...generateCluster(28.0, 73.3, 2.0, 100, 1.0)
+        );
+
+        // Delhi NCR
+        heatPoints.push(
+          ...generateCluster(28.61, 77.20, 1.2, 80, 0.95)
+        );
+
+        // Gujarat
+        heatPoints.push(
+          ...generateCluster(23.0, 72.5, 1.8, 70, 0.75)
+        );
+
+        // Madhya Pradesh
+        heatPoints.push(
+          ...generateCluster(23.2, 77.4, 1.8, 70, 0.7)
+        );
+
+        // Maharashtra
+        heatPoints.push(
+          ...generateCluster(19.0, 72.8, 1.5, 60, 0.7)
+        );
+
+        // Uttar Pradesh
+        heatPoints.push(
+          ...generateCluster(26.8, 80.9, 1.5, 50, 0.5)
+        );
+
+        // Bihar
+        heatPoints.push(
+          ...generateCluster(25.5, 85.1, 1.2, 40, 0.45)
+        );
+
+        // South India
+        heatPoints.push(
+          ...generateCluster(13.0, 80.2, 1.0, 30, 0.3),
+          ...generateCluster(12.9, 77.5, 1.0, 30, 0.3),
+          ...generateCluster(8.5, 76.9, 1.0, 20, 0.2)
+        );
+
+        // Himalayas
+        heatPoints.push(
+          ...generateCluster(34.0, 74.7, 1.0, 20, 0.1),
+          ...generateCluster(31.1, 77.1, 1.0, 20, 0.1)
+        );
+
+        if (heatLayer.current) {
+          map.removeLayer(heatLayer.current);
+        }
+
+        heatLayer.current = L.heatLayer(
+          heatPoints,
+          {
+            radius: 25,
+            blur: 18,
+            max: 1.0,
+            minOpacity: 0.4,
+
+            gradient: {
+              0.1: "#0066ff",
+              0.3: "#00ff88",
+              0.5: "#ffff00",
+              0.7: "#ff8800",
+              1.0: "#ff0000",
+            },
+          }
+        );
+
+        heatLayer.current.addTo(map);
+      },
+    });
+  }, [map, cities]);
 
   return null;
 }
 
-export default function HeatMap({ 
-  wards, 
-  selectedWardId, 
-  onSelectWard, 
-  activeLayer 
-}) {
-  const delhiCenter = [28.59, 77.16]; // Delhi, India Center
-  
-  // Set geographical bounds to India only to restrict map movement
-  const indiaBounds = [
-    [6.0, 68.0],  // Southwest coordinate (bottom-left)
-    [37.5, 97.5]  // Northeast coordinate (top-right)
+export default function HeatMap() {
+  const [cities, setCities] = useState([]);
+  const [lastUpdated, setLastUpdated] = useState("");
+
+  const cityData = [
+    { name: "Delhi", lat: 28.61, lon: 77.20 },
+    { name: "Mumbai", lat: 19.07, lon: 72.87 },
+    { name: "Kolkata", lat: 22.57, lon: 88.36 },
+    { name: "Chennai", lat: 13.08, lon: 80.27 },
+    { name: "Bengaluru", lat: 12.97, lon: 77.59 },
+    { name: "Hyderabad", lat: 17.38, lon: 78.48 },
+    { name: "Ahmedabad", lat: 23.02, lon: 72.57 },
+    { name: "Jaipur", lat: 26.91, lon: 75.79 },
+    { name: "Lucknow", lat: 26.84, lon: 80.94 },
+    { name: "Patna", lat: 25.59, lon: 85.13 },
+    { name: "Bhopal", lat: 23.25, lon: 77.41 },
+    { name: "Srinagar", lat: 34.08, lon: 74.79 },
+    { name: "Thiruvananthapuram", lat: 8.52, lon: 76.93 },
   ];
 
-  // Get color for a ward based on current metrics and active map layer
-  const getWardStyle = (ward) => {
-    const isSelected = ward.id === selectedWardId;
-    let fillColor = '#ef4444';
-    let fillOpacity = 0.55;
+  async function fetchLiveData() {
+    const updated = await Promise.all(
+      cityData.map(async (city) => {
+        const response = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&current=temperature_2m`
+        );
 
-    if (activeLayer === 'temperature') {
-      const temp = ward.currentTemp;
-      if (temp >= 42) fillColor = 'var(--color-heat)';          // Very Hot (Dark Red)
-      else if (temp >= 39) fillColor = 'var(--color-warm)';      // Hot (Orange)
-      else if (temp >= 36) fillColor = 'hsl(42, 100%, 62%)';      // Warm (Yellow)
-      else fillColor = 'var(--color-cool)';                     // Cooler (Green)
-      
-      fillOpacity = 0.35 + ((temp - 32) / 15) * 0.45;
-    } else if (activeLayer === 'vulnerability') {
-      const vuln = ward.vulnerability;
-      if (vuln >= 80) fillColor = 'var(--color-vulnerable)';    // High Vulnerability (Deep Indigo Blue)
-      else if (vuln >= 50) fillColor = 'var(--color-blue)';      // Medium
-      else fillColor = 'var(--color-cool)';                     // Low
-      
-      fillOpacity = 0.3 + (vuln / 100) * 0.45;
-    } else if (activeLayer === 'priority') {
-      const priority = ward.priority;
-      if (priority === 'High') fillColor = 'var(--color-heat)';
-      else if (priority === 'Medium') fillColor = 'var(--color-warm)';
-      else fillColor = 'var(--color-cool)';
-      
-      fillOpacity = 0.55;
-    }
+        const data = await response.json();
 
-    return {
-      fillColor,
-      fillOpacity: isSelected ? fillOpacity + 0.15 : fillOpacity,
-      color: isSelected ? 'white' : 'hsla(220, 20%, 95%, 0.15)',
-      weight: isSelected ? 2.5 : 1,
-      dashArray: isSelected ? '' : '3',
-      className: `ward-polygon-${ward.id} transition-all duration-300`
-    };
-  };
+        const temp = data.current.temperature_2m;
 
-  // Render Legend content dynamically
-  const renderLegend = () => {
-    if (activeLayer === 'temperature') {
-      return (
-        <>
-          <div className="legend-title">Surface Temperature (°C)</div>
-          <div 
-            className="legend-gradient" 
-            style={{ background: 'linear-gradient(to right, var(--color-cool), hsl(42, 100%, 62%), var(--color-warm), var(--color-heat))' }}
-          />
-          <div className="legend-labels">
-            <span>&lt; 36°C</span>
-            <span>39°C</span>
-            <span>42°C+</span>
-          </div>
-        </>
-      );
-    } else if (activeLayer === 'vulnerability') {
-      return (
-        <>
-          <div className="legend-title">Social Vulnerability Index</div>
-          <div 
-            className="legend-gradient" 
-            style={{ background: 'linear-gradient(to right, hsl(260, 45%, 75%), hsl(270, 65%, 60%), hsl(280, 85%, 50%))' }}
-          />
-          <div className="legend-labels">
-            <span>Low</span>
-            <span>Medium</span>
-            <span>High Risk</span>
-          </div>
-        </>
-      );
-    } else if (activeLayer === 'priority') {
-      return (
-        <>
-          <div className="legend-title">Intervention Priority</div>
-          <div className="legend-labels" style={{ marginTop: '0.25rem', gap: '0.4rem', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-heat)' }}></span>
-              <span>High Priority (Hot & Dense)</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-warm)' }}></span>
-              <span>Medium Priority</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-cool)' }}></span>
-              <span>Low Priority (Stable Zones)</span>
-            </div>
-          </div>
-        </>
-      );
-    }
-  };
+        return {
+          ...city,
+          temp,
+          severity:
+            temp > 42
+              ? "Extreme"
+              : temp > 39
+              ? "High"
+              : temp > 36
+              ? "Moderate"
+              : "Low",
+          risk:
+            temp > 42
+              ? "Critical"
+              : temp > 39
+              ? "High"
+              : "Moderate",
+          forecast: (temp + 2).toFixed(1),
+        };
+      })
+    );
+
+    setCities(updated);
+    setLastUpdated(
+      new Date().toLocaleTimeString()
+    );
+  }
+
+  useEffect(() => {
+    fetchLiveData();
+
+    const interval =
+      setInterval(fetchLiveData, 300000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
-    <div className="map-container-wrapper">
-      <MapContainer 
-        center={delhiCenter} 
-        zoom={11} 
-        zoomControl={true}
-        maxZoom={15}
-        minZoom={5}
-        maxBounds={indiaBounds}
-        maxBoundsViscosity={1.0}
+    <div
+      style={{
+        height: "100%",
+        width: "100%",
+        position: "relative",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          top: 20,
+          right: 20,
+          background: "#ef4444",
+          color: "white",
+          padding: "12px",
+          borderRadius: "10px",
+          zIndex: 1000,
+        }}
+      >
+        🔴 LIVE DATA
+        <br />
+        {lastUpdated}
+      </div>
+
+      <MapContainer
+        center={[22.5, 79]}
+        zoom={4}
+        style={{
+          height: "100%",
+          width: "100%",
+        }}
       >
         <TileLayer
-          attribution='&copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          attribution="OpenStreetMap"
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {wards.map((ward) => (
-          <Polygon
-            key={ward.id}
-            positions={ward.coordinates}
-            eventHandlers={{
-              click: () => onSelectWard(ward.id),
-              mouseover: (e) => {
-                const layer = e.target;
-                layer.setStyle({
-                  fillOpacity: getWardStyle(ward).fillOpacity + 0.1,
-                  weight: 2
-                });
-              },
-              mouseout: (e) => {
-                const layer = e.target;
-                layer.setStyle(getWardStyle(ward));
-              }
-            }}
-            pathOptions={getWardStyle(ward)}
-          />
-        ))}
+        <HeatLayer cities={cities} />
 
-        <MapController selectedWard={selectedWardId} wards={wards} />
+        {cities.map((city) => (
+          <Marker
+            key={city.name}
+            position={[
+              city.lat,
+              city.lon,
+            ]}
+          >
+            <Popup>
+              <h3>{city.name}</h3>
+
+              <p>
+                🌡 Temperature:
+                <b>
+                  {" "}
+                  {city.temp}°C
+                </b>
+              </p>
+
+              <p>
+                🔥 Severity:
+                <b>
+                  {" "}
+                  {city.severity}
+                </b>
+              </p>
+
+              <p>
+                🤖 AI Risk:
+                <b>
+                  {" "}
+                  {city.risk}
+                </b>
+              </p>
+
+              <p>
+                📈 Forecast:
+                <b>
+                  {" "}
+                  {city.forecast}°C
+                </b>
+              </p>
+            </Popup>
+          </Marker>
+        ))}
       </MapContainer>
 
-      {/* Map Overlay Legend */}
-      <div className="map-legend">
-        {renderLegend()}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 20,
+          right: 20,
+          background: "white",
+          padding: "15px",
+          borderRadius: "10px",
+          zIndex: 1000,
+        }}
+      >
+        <b>Heat Intensity</b>
+
+        <div style={{ color: "#0066ff" }}>
+          ● Cool
+        </div>
+
+        <div style={{ color: "#00ff88" }}>
+          ● Mild
+        </div>
+
+        <div style={{ color: "#ffff00" }}>
+          ● Moderate
+        </div>
+
+        <div style={{ color: "#ff8800" }}>
+          ● High
+        </div>
+
+        <div style={{ color: "#ff0000" }}>
+          ● Extreme
+        </div>
       </div>
     </div>
   );
